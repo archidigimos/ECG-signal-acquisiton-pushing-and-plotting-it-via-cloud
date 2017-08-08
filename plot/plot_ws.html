@@ -1,0 +1,97 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+	<script type="text/javascript">
+	
+	var socket = null;
+    var isopen = false;
+	var datx=0;
+	var daty=0;
+	window.onload = function () {
+
+	
+	        socket = new WebSocket("ws://ec2-35-163-167-156.us-west-2.compute.amazonaws.com:80");
+            socket.binaryType = "arraybuffer";
+
+            socket.onopen = function() {
+               console.log("Connected!");
+               isopen = true;
+			   socket.send("ADMIN");
+            }
+
+            socket.onmessage = function(e) 
+			{
+                  console.log("Text message received: " + e.data);
+				  dat=parseInt(e.data);
+            }
+
+            socket.onclose = function(e) {
+               console.log("Connection closed.");
+               socket = null;
+               isopen = false;
+            }
+			
+			
+		var dps = []; // dataPoints
+		
+		var chart = new CanvasJS.Chart("chartContainer",{
+			title :{
+				text: "Sensor Data Plot"
+			},			
+			data: [{
+				type: "spline",
+				dataPoints: dps 
+			}]
+		});
+
+		var xVal = 0;
+		var yVal = 0;
+		var updateInterval = 100;
+		var dataLength = 500;// number of dataPoints visible at any point
+
+		var updateChart = function (count) {
+			
+			socket.onmessage = function(e) 
+			{
+                  console.log("Text message received: " + e.data);
+                  var data_string = e.data;
+                  var data_parsed = data_string.split('-');
+                  if((data_parsed[0]=="SENSOR2")&&(data_parsed[3]=="RPI3_1"))
+                  {
+				  daty=parseInt(data_parsed[1]);
+				  datx=parseInt(data_parsed[2]);
+					}	  
+            }
+				yVal =daty;
+				xVal =datx;
+				dps.push({
+					x: xVal,
+					y: yVal
+				});
+			
+			if (dps.length > dataLength)
+			{
+				dps.shift();				
+			}
+			
+			chart.render();		
+
+		};
+
+		// generates first set of dataPoints
+		updateChart(dataLength); 
+
+		// update chart after specified time. 
+		setInterval(function(){updateChart()}, updateInterval); 
+
+	};
+	
+	</script>
+	<script type="text/javascript" src="canvasjs.min.js"></script>
+</head>
+<body>
+	<div id="chartContainer" style="height: 300px; width:100%;">
+	</div>
+</body>
+</html>
